@@ -1,23 +1,32 @@
 import { useState } from "react";
 import { FaExchangeAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
+import CryptoJS from "crypto-js";
 
 const Main = () => {
   const apiKey = "1d0cmvA5wNqO86TRexQ6AIa9Gxaq4qvJOBKD0iVX";
   const apiSecret = "pJRF3YAUcsqqJ8rwvoZOzCHXzdKPUGJW8WAumkQU";
 
   function showListOfCrypt() {
+    const data = JSON.stringify({}); // Ваши данные запроса в формате JSON
+    const sign = CryptoJS.HmacSHA256(data, apiSecret).toString(
+      CryptoJS.enc.Hex
+    );
+
     fetch("https://ff.io/api/v2/ccies", {
       method: "POST",
       headers: {
         "Content-Type": "application/json; charset=UTF-8",
         "X-API-KEY": apiKey,
-        "X-API-SIGN": apiSecret,
+        "X-API-SIGN": sign,
       },
+      body: data,
     })
-      .then((res) => res.json)
-      .then((data) => console.log(data));
+      .then((res) => res.json())
+      .then((data) => console.log(data))
+      .catch((error) => console.error("Error:", error));
   }
+
   showListOfCrypt();
 
   const [receivedCurrency, setReceivedCurrency] = useState("ETH");
@@ -25,6 +34,14 @@ const Main = () => {
 
   const [visibReceived, setVisibReceived] = useState(false);
   const [visibSend, setVisibSend] = useState(false);
+
+  const [inputSendValue, setInputSendValue] = useState<string>("");
+  let handleInputSend = (event: React.ChangeEvent<HTMLInputElement>) =>
+    setInputSendValue(event.target.value);
+
+  const [inputRecivedValue, setInputReceivedValue] = useState<string>("");
+  let handleInputReceived = (event: React.ChangeEvent<HTMLInputElement>) =>
+    setInputReceivedValue(event.target.value);
 
   const handleVisibReceived = () => {
     setVisibReceived(!visibReceived);
@@ -34,16 +51,22 @@ const Main = () => {
     setVisibSend(!visibSend);
     setVisibReceived(false);
   };
+  const handleAdressInput = () => {
+    setVisibReceived(false);
+    setVisibSend(false);
+  };
 
-  function setSendValue(event: any) {
-    if (event.target.tagName === "LI") {
-      setSendCurrency(event.target.innerHTML);
+  function setSendValue(event: React.MouseEvent<HTMLUListElement>) {
+    const target = event.target as HTMLElement;
+    if (target.tagName === "LI") {
+      setSendCurrency(target.innerHTML);
       handleVisibSend();
     }
   }
-  function setRecievedValue(event: any) {
-    if (event.target.tagName === "LI") {
-      setReceivedCurrency(event.target.innerHTML);
+  function setRecievedValue(event: React.MouseEvent<HTMLUListElement>) {
+    const target = event.target as HTMLElement;
+    if (target.tagName === "LI") {
+      setReceivedCurrency(target.innerHTML);
       handleVisibReceived();
     }
   }
@@ -66,6 +89,8 @@ const Main = () => {
                     visibSend === true ? "border-r-0" : ""
                   }`}
                   placeholder="0.0000"
+                  value={inputSendValue}
+                  onChange={handleInputSend}
                 />
                 <div
                   className={`relative ${
@@ -127,6 +152,8 @@ const Main = () => {
                     visibReceived === true ? "border-r-0" : ""
                   }`}
                   placeholder="0.0000"
+                  value={inputRecivedValue}
+                  onChange={handleInputReceived}
                 />
                 <div
                   className={`relative ${
@@ -181,7 +208,7 @@ const Main = () => {
               </div>
             </div>
 
-            <div className="w-full relative">
+            <div className="w-full relative" onClick={handleAdressInput}>
               <input
                 type="text"
                 className="border rounded-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 w-full text-xl"
@@ -196,11 +223,11 @@ const Main = () => {
               <div className="max-w-xl">
                 <p>
                   Используя сайт и создавая обмен, вы соглашаетесь с{" "}
-                  <span className="text-green-400">
+                  <span className="text-green-400 cursor-pointer">
                     Условиями использования
                   </span>{" "}
                   и
-                  <span className="text-green-400">
+                  <span className="text-green-400 cursor-pointer">
                     {" "}
                     Политикой конфиденциальности
                   </span>
