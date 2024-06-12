@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 body {
-  background: radial-gradient(rgb(43, 42, 42), black);
+  background: radial-gradient(rgb(42, 43, 43), black);
   height: 100vh;
+}
+
+@font-face {
+  font-family: "Montserrat-Regular";
+  font-display: swap;
+  src: url(../public/fonts/Montserrat-Regular.ttf);
+  src: url(../public/fonts/Montserrat-Regular.woff);
+}
+@font-face {
+  font-family: "Montserrat-SemiBold";
+  font-display: swap;
+  src: url(../public/fonts/Montserrat-SemiBold.ttf);
+  src: url(../public/fonts/Montserrat-SemiBold.woff);
 }
