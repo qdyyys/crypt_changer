@@ -3,6 +3,23 @@ import { FaExchangeAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
 
 const Main = () => {
+  const apiKey = "1d0cmvA5wNqO86TRexQ6AIa9Gxaq4qvJOBKD0iVX";
+  const apiSecret = "pJRF3YAUcsqqJ8rwvoZOzCHXzdKPUGJW8WAumkQU";
+
+  function showListOfCrypt() {
+    fetch("https://ff.io/api/v2/ccies", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-API-KEY": apiKey,
+        "X-API-SIGN": apiSecret,
+      },
+    })
+      .then((res) => res.json)
+      .then((data) => console.log(data));
+  }
+  showListOfCrypt();
+
   const [receivedCurrency, setReceivedCurrency] = useState("ETH");
   const [sendCurrency, setSendCurrency] = useState("BTC");
 
@@ -18,16 +35,6 @@ const Main = () => {
     setVisibReceived(false);
   };
 
-  fetch("https://ff.io/api/v2/ccies", {
-    headers: {
-      "Content-Type": "application/json; charset=UTF-8",
-      "X-API-KEY": "1d0cmvA5wNqO86TRexQ6AIa9Gxaq4qvJOBKD0iVX",
-      "X-API-SIGN": "pJRF3YAUcsqqJ8rwvoZOzCHXzdKPUGJW8WAumkQU",
-    },
-  })
-    .then((res) => res.json())
-    .then((data) => console.log(data));
-
   function setSendValue(event: any) {
     if (event.target.tagName === "LI") {
       setSendCurrency(event.target.innerHTML);
@@ -40,6 +47,7 @@ const Main = () => {
       handleVisibReceived();
     }
   }
+
   return (
     <div className="text-white">
       <section>
