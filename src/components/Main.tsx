@@ -1,47 +1,90 @@
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FaExchangeAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
-import CryptoJS from "crypto-js";
 
 const Main = () => {
-  const apiKey = "1d0cmvA5wNqO86TRexQ6AIa9Gxaq4qvJOBKD0iVX";
-  const apiSecret = "pJRF3YAUcsqqJ8rwvoZOzCHXzdKPUGJW8WAumkQU";
-
-  function showListOfCrypt() {
-    const data = JSON.stringify({}); // Ваши данные запроса в формате JSON
-    const sign = CryptoJS.HmacSHA256(data, apiSecret).toString(
-      CryptoJS.enc.Hex
-    );
-
-    fetch("https://ff.io/api/v2/ccies", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=UTF-8",
-        "X-API-KEY": apiKey,
-        "X-API-SIGN": sign,
-      },
-      body: data,
+  const apiKey =
+    "b2aa12b1fff9d5e26e8a832515e5c9519a45e4d313c966328db4070409c2dd0c";
+  interface CurrencyData {
+    id: string;
+    name: string;
+    symbol: string;
+    [key: string]: any;
+  }
+  useEffect(() => {
+    fetch("https://api.changenow.io/v1/currencies?active=true?fixed=true", {
+      method: "GET",
+      redirect: "follow",
     })
       .then((res) => res.json())
-      .then((data) => console.log(data))
-      .catch((error) => console.error("Error:", error));
-  }
+      .then((data: CurrencyData[]) => {
+        const tickers: string[] = [];
+        data.forEach((elem, i) => {
+          if (i < 100) {
+            tickers.push(elem.ticker);
+          }
+        });
+        setDataTickers(tickers);
+      });
+  }, []);
 
-  showListOfCrypt();
+  const [checkMin, setCheckMin] = useState<boolean>(false);
 
-  const [receivedCurrency, setReceivedCurrency] = useState("ETH");
-  const [sendCurrency, setSendCurrency] = useState("BTC");
+  const [dataTickers, setDataTickers] = useState<string[]>([]);
+
+  const [userAdress, setUserAdress] = useState("");
+  const changedUserAdress = (event: React.ChangeEvent<HTMLInputElement>) =>
+    setUserAdress(event.target.value);
+
+  const [receivedCurrency, setReceivedCurrency] = useState<string>("ETH");
+  const [sendCurrency, setSendCurrency] = useState<string>("BTC");
 
   const [visibReceived, setVisibReceived] = useState(false);
   const [visibSend, setVisibSend] = useState(false);
 
+  const currentInputRefSend = useRef<number>(0);
   const [inputSendValue, setInputSendValue] = useState<string>("");
-  let handleInputSend = (event: React.ChangeEvent<HTMLInputElement>) =>
-    setInputSendValue(event.target.value);
+  let handleInputSend = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    currentInputRefSend.current = Number(value);
+    if (/^\d*\.?\d*$/.test(value) && Number(value) < 900000000) {
+      setInputSendValue(value);
+      fetch(
+        `https://api.changenow.io/v1/min-amount/${sendCurrency}_${receivedCurrency}?api_key=${apiKey}`,
+        {
+          method: "GET",
+          redirect: "follow",
+        }
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          const isMin = currentInputRefSend.current < data.minAmount;
+          setCheckMin(isMin);
+
+          if (!isMin) {
+            fetch(
+              `https://api.changenow.io/v1/exchange-amount/${currentInputRefSend.current}/${sendCurrency}_${receivedCurrency}/?api_key=${apiKey}`,
+              {
+                method: "GET",
+                redirect: "follow",
+              }
+            )
+              .then((res) => res.json())
+              .then((data) => {
+                setInputReceivedValue(data.estimatedAmount);
+              });
+          }
+        });
+    }
+  };
 
   const [inputRecivedValue, setInputReceivedValue] = useState<string>("");
-  let handleInputReceived = (event: React.ChangeEvent<HTMLInputElement>) =>
-    setInputReceivedValue(event.target.value);
+  let handleInputReceived = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (/^\d*\.?\d*$/.test(value) && Number(value) < 900000000) {
+      setInputReceivedValue(value);
+    }
+  };
 
   const handleVisibReceived = () => {
     setVisibReceived(!visibReceived);
@@ -71,6 +114,11 @@ const Main = () => {
     }
   }
 
+  function swapCoins() {
+    const temp = sendCurrency;
+    setSendCurrency(receivedCurrency);
+    setReceivedCurrency(temp);
+  }
   return (
     <div className="text-white">
       <section>
@@ -82,11 +130,17 @@ const Main = () => {
           <div className="flex gap-5 flex-col">
             <div className="flex gap-5 items-center justify-between">
               <div className="flex relative">
-                <div className="absolute bottom-full pl-1 pb-2">Получаете</div>
+                <div className="absolute bottom-full pl-1 pb-2">
+                  Отправляете
+                </div>
                 <input
                   type="text"
                   className={`border border-r-0 rounded-tl-lg rounded-bl-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 text-2xl ${
                     visibSend === true ? "border-r-0" : ""
+                  } ${
+                    checkMin === true
+                      ? "focus:border-red-400 border-red-400"
+                      : null
                   }`}
                   placeholder="0.0000"
                   value={inputSendValue}
@@ -98,7 +152,7 @@ const Main = () => {
                   }`}
                 >
                   <div
-                    className={`bg-black/50 rounded-tr-lg rounded-br-lg cursor-pointer font-MontserratSemiBold h-full flex flex-col w-32 z-0 relative items-center justify-center ${
+                    className={`bg-black/50 rounded-tr-lg rounded-br-lg cursor-pointer font-MontserratSemiBold h-full flex flex-col w-40 z-0 relative items-center justify-center ${
                       visibSend === true
                         ? "border-green-400 border-t border-r rounded-br-none border-l border-b"
                         : "border"
@@ -116,33 +170,26 @@ const Main = () => {
                     }`}
                   >
                     <ul
-                      className="font-MontserratSemiBold"
+                      className="font-MontserratSemiBold max-h-32 overflow-auto"
                       onClick={setSendValue}
                     >
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        BTC
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        ETH
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        CNS
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        BNB
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        CRB
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        USDT
-                      </li>
+                      {dataTickers.map((_: any, key) => (
+                        <li
+                          key={key}
+                          className="transition hover:bg-green-600 cursor-pointer px-3 py-1"
+                        >
+                          {dataTickers[key].toUpperCase()}
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 </div>
               </div>
 
-              <FaExchangeAlt className="cursor-pointer text-2xl active:scale-90 transition hover:text-green-300" />
+              <FaExchangeAlt
+                className="cursor-pointer text-2xl active:scale-90 transition hover:text-green-300"
+                onClick={swapCoins}
+              />
 
               <div className="flex relative">
                 <div className="absolute bottom-full pl-1 pb-2">Получаете</div>
@@ -163,7 +210,7 @@ const Main = () => {
                   }`}
                 >
                   <div
-                    className={`bg-black/50 rounded-tr-lg rounded-br-lg cursor-pointer font-MontserratSemiBold h-full flex flex-col justify-center w-32 z-0 relative items-center ${
+                    className={`bg-black/50 rounded-tr-lg rounded-br-lg cursor-pointer font-MontserratSemiBold h-full flex flex-col justify-center w-40 z-0 relative items-center ${
                       visibReceived === true
                         ? "border-green-400 border-t border-r rounded-br-none border-l border-b"
                         : "border"
@@ -181,27 +228,17 @@ const Main = () => {
                     }`}
                   >
                     <ul
-                      className="font-MontserratSemiBold"
+                      className="font-MontserratSemiBold max-h-32 overflow-auto"
                       onClick={setRecievedValue}
                     >
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        BTC
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        ETH
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        CNS
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        BNB
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        CRB
-                      </li>
-                      <li className="transition hover:bg-green-600 cursor-pointer px-3 py-1">
-                        USDT
-                      </li>
+                      {dataTickers.map((_: any, key) => (
+                        <li
+                          key={key}
+                          className="transition hover:bg-green-600 cursor-pointer px-3 py-1"
+                        >
+                          {dataTickers[key].toUpperCase()}
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 </div>
@@ -213,6 +250,8 @@ const Main = () => {
                 type="text"
                 className="border rounded-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 w-full text-xl"
                 placeholder={`Ваш ${receivedCurrency} адресс`}
+                value={userAdress}
+                onChange={changedUserAdress}
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
                 <IoClose className="cursor-pointer hover:text-green-300" />
