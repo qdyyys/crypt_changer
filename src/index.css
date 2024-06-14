@@ -19,3 +19,39 @@ body {
   src: url(../public/fonts/Montserrat-SemiBold.ttf);
   src: url(../public/fonts/Montserrat-SemiBold.woff);
 }
+@media (max-width: 1150px) {
+  .cont_change {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .cont_change div {
+    width: 100%;
+  }
+  .cont_main_crypt {
+    padding: 0px 50px;
+  }
+  .modal_cont {
+    padding: 0 20px;
+  }
+}
+@media (max-width: 603px) {
+  .cont_change input {
+    width: 100%;
+  }
+  .nav {
+    align-items: center;
+    justify-content: start;
+    padding-left: 10px;
+  }
+  .nav ul {
+    font-size: 14px;
+    gap: 15px;
+    width: 100%;
+    justify-content: center;
+  }
+  .adress_text {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+}

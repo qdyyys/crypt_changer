@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FaExchangeAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
+import { FiCopy } from "react-icons/fi";
 
 const Main = () => {
   const apiKey =
@@ -239,6 +240,8 @@ const Main = () => {
         }
       });
   }
+
+  const HandleCopyAdress = () => navigator.clipboard.writeText(receivedAdress);
   return (
     <div className="text-white">
       <section>
@@ -246,9 +249,9 @@ const Main = () => {
           Моментальный обмен <br />{" "}
           <span className="text-green-400">крипто</span>валют
         </h1>
-        <div className="w-full flex  items-center justify-center font-MontserratRegular">
+        <div className="w-full flex  items-center justify-center font-MontserratRegular cont_main_crypt">
           <div className="flex gap-5 flex-col">
-            <div className="flex gap-5 items-center justify-between">
+            <div className="flex gap-5 items-center justify-between cont_change">
               <div className="flex relative">
                 <div className="absolute bottom-full pl-1 pb-2">
                   Отправляете
@@ -315,7 +318,7 @@ const Main = () => {
                 <div className="absolute bottom-full pl-1 pb-2">Получаете</div>
                 <input
                   type="text"
-                  className={`border border-r-0 rounded-tl-lg rounded-bl-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 text-xl ${
+                  className={`border border-r-0 rounded-tl-lg rounded-bl-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 text-2xl ${
                     visibReceived === true ? "border-r-0" : ""
                   } ${
                     checkResMin ? "focus:border-red-400 border-red-400" : null
@@ -423,14 +426,14 @@ const Main = () => {
         </div>
 
         <div
-          className={`fixed w-full h-screen text-black top-0 left-1/2 -translate-x-1/2 transition duration-500 origin-top ${
+          className={`modal_cont fixed w-full h-screen text-black top-0 left-1/2 -translate-x-1/2 transition duration-500 origin-top ${
             trade ? "scale-100 visible" : "scale-0"
           }`}
         >
           <div
-            className={` bg-white/100 max-w-3xl mx-auto text-black py-5 px-5 rounded-xl border-t-4 border-green-500 top-64 relative `}
+            className={` bg-white/100 max-w-3xl mx-auto text-black py-5 px-5 rounded-xl border-t-4 border-green-500 top-64 relative modal_trans`}
           >
-            <div className="flex items-center mb-5 font-MontserratSemiBold text-2xl justify-around">
+            <div className="header_modal flex flex-wrap items-center mb-5 font-MontserratSemiBold text-2xl justify-around">
               <h2>Детали операции</h2>
               <h2>#{activeData.id}</h2>
               <p>{activeData.status?.toUpperCase()}</p>
@@ -459,7 +462,15 @@ const Main = () => {
 
                   <span className="flex justify-between flex-wrap">
                     По следеющему адрессу:{" "}
-                    <p className="font-MontserratSemiBold">{receivedAdress}</p>
+                    <div className="flex gap-3 items-center">
+                      <p className="font-MontserratSemiBold text adress_text">
+                        {receivedAdress}
+                      </p>
+                      <FiCopy
+                        className="cursor-pointer transition active:scale-95"
+                        onClick={HandleCopyAdress}
+                      />
+                    </div>
                   </span>
                 </div>
               </div>
@@ -489,7 +500,7 @@ const Main = () => {
 
                   <span className="flex justify-between flex-wrap">
                     По вашему адрессу:{" "}
-                    <p className="font-MontserratSemiBold">
+                    <p className="font-MontserratSemiBold adress_text">
                       {activeData.receivedAdress}
                     </p>
                   </span>
