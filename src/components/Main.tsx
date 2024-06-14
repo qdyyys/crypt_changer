@@ -32,6 +32,7 @@ const Main = () => {
 
   const [dataTickers, setDataTickers] = useState<string[]>([]);
 
+  const [receivedAdress, setReceivedAdress] = useState<string>("");
   const [userAdress, setUserAdress] = useState("");
   const changedUserAdress = (event: React.ChangeEvent<HTMLInputElement>) =>
     setUserAdress(event.target.value);
@@ -115,9 +116,43 @@ const Main = () => {
   }
 
   function swapCoins() {
-    const temp = sendCurrency;
+    const tempCurrency = sendCurrency;
     setSendCurrency(receivedCurrency);
-    setReceivedCurrency(temp);
+    setReceivedCurrency(tempCurrency);
+
+    const tempInputSend = inputSendValue;
+    setInputSendValue(inputRecivedValue);
+    setInputReceivedValue(tempInputSend);
+  }
+
+  const [trade, setTrade] = useState(false);
+  function handleStartTrade() {
+    fetch(`https://api.changenow.io/v1/transactions/${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${sendCurrency}`,
+        to: `${receivedCurrency}`,
+        address: `${userAdress}`,
+        amount: `${currentInputRefSend.current}`,
+        extraId: "",
+        userId: "",
+        contactEmail: "",
+        refundAddress: "",
+        refundExtraId: "",
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error) {
+          setReceivedAdress(data.payinAddress);
+          setTrade(true);
+          console.log(data);
+          console.log(trade);
+        }
+      });
   }
   return (
     <div className="text-white">
@@ -273,9 +308,39 @@ const Main = () => {
                 </p>
               </div>
 
-              <button className="bg-green-600/90 font-MontserratSemiBold px-5 py-2 rounded-md active:scale-95 transition">
+              <button
+                className="bg-green-600/90 font-MontserratSemiBold px-5 py-2 rounded-md active:scale-95 transition"
+                onClick={handleStartTrade}
+              >
                 Начать обмен
               </button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`fixed w-full h-screen text-black top-0 left-1/2 -translate-x-1/2 transition duration-500 origin-top ${
+            trade ? "scale-100 visible" : "scale-0"
+          }`}
+        >
+          <div
+            className={`bg-white/100 max-w-3xl mx-auto text-black py-5 px-5 rounded-xl border-t-4 border-green-500 top-64 relative `}
+          >
+            <h2 className="text-center font-MontserratSemiBold text-2xl mb-5">
+              Детали операции
+            </h2>
+            <div className="flex flex-col gap-2">
+              <span className="flex justify-between">
+                Внесите средства:{" "}
+                <p className="font-MontserratSemiBold">
+                  {inputSendValue} {sendCurrency}
+                </p>
+              </span>
+
+              <span className="flex justify-between flex-wrap">
+                По следеющему адрессу:{" "}
+                <p className="font-MontserratSemiBold">{receivedAdress}</p>
+              </span>
             </div>
           </div>
         </div>
