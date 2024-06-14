@@ -28,12 +28,33 @@ const Main = () => {
       });
   }, []);
 
+  interface DataInt {
+    send: string;
+    sendAmount: number;
+    receive: string;
+    receiveAmount: string;
+    receivedAdress: string;
+    id: string;
+    status?: string;
+  }
+  const [activeData, setActiveData] = useState<DataInt>({
+    send: "",
+    sendAmount: 0,
+    receive: "",
+    receiveAmount: "",
+    receivedAdress: "",
+    id: "",
+  });
+
   const [checkMin, setCheckMin] = useState<boolean>(false);
+  const [checkResMin, setCheckResMin] = useState<boolean>(false);
+  const [validAdress, setValidAdress] = useState(true);
 
   const [dataTickers, setDataTickers] = useState<string[]>([]);
 
   const [receivedAdress, setReceivedAdress] = useState<string>("");
   const [userAdress, setUserAdress] = useState("");
+  const resetUserAdress = () => setUserAdress("");
   const changedUserAdress = (event: React.ChangeEvent<HTMLInputElement>) =>
     setUserAdress(event.target.value);
 
@@ -47,6 +68,7 @@ const Main = () => {
   const [inputSendValue, setInputSendValue] = useState<string>("");
   let handleInputSend = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
+    setCheckResMin(false);
     currentInputRefSend.current = Number(value);
     if (/^\d*\.?\d*$/.test(value) && Number(value) < 900000000) {
       setInputSendValue(value);
@@ -78,12 +100,40 @@ const Main = () => {
         });
     }
   };
-
+  const currentInputRefRec = useRef<number>(0);
   const [inputRecivedValue, setInputReceivedValue] = useState<string>("");
   let handleInputReceived = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
+    setCheckMin(false);
+    currentInputRefRec.current = Number(value);
     if (/^\d*\.?\d*$/.test(value) && Number(value) < 900000000) {
       setInputReceivedValue(value);
+      fetch(
+        `https://api.changenow.io/v1/min-amount/${receivedCurrency}_${sendCurrency}?api_key=${apiKey}`,
+        {
+          method: "GET",
+          redirect: "follow",
+        }
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          console.log(data.minAmount);
+          const isMin = currentInputRefRec.current < data.minAmount;
+          setCheckResMin(isMin);
+          if (!isMin) {
+            fetch(
+              `https://api.changenow.io/v1/exchange-amount/${currentInputRefRec.current}/${receivedCurrency}_${sendCurrency}/?api_key=${apiKey}`,
+              {
+                method: "GET",
+                redirect: "follow",
+              }
+            )
+              .then((res) => res.json())
+              .then((data) => {
+                setInputSendValue(data.estimatedAmount);
+              });
+          }
+        });
     }
   };
 
@@ -126,6 +176,9 @@ const Main = () => {
   }
 
   const [trade, setTrade] = useState(false);
+  const [activeTrade, setActiveTrade] = useState(false);
+  const handleVisibDetails = () => setTrade(false);
+
   function handleStartTrade() {
     fetch(`https://api.changenow.io/v1/transactions/${apiKey}`, {
       method: "POST",
@@ -149,8 +202,40 @@ const Main = () => {
         if (!data.error) {
           setReceivedAdress(data.payinAddress);
           setTrade(true);
-          console.log(data);
-          console.log(trade);
+          setActiveTrade(true);
+          setValidAdress(true);
+
+          setActiveData({
+            send: sendCurrency,
+            sendAmount: currentInputRefSend.current,
+            receive: receivedCurrency,
+            receiveAmount: data.amount,
+            receivedAdress: userAdress,
+            id: data.id,
+          });
+          const id = data.id;
+          const intervalStatusTrans = setInterval(() => {
+            fetch(`https://api.changenow.io/v1/transactions/${id}/${apiKey}`, {
+              method: "GET",
+              redirect: "follow",
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                console.log(data);
+                setActiveData((prevData) => ({
+                  ...prevData,
+                  status: data.status,
+                }));
+                if (data.status === "finished") {
+                  clearInterval(intervalStatusTrans);
+                  console.log("Finished the transaction");
+                  setTrade(false);
+                  setActiveTrade(false);
+                }
+              });
+          }, 3000);
+        } else {
+          setValidAdress(false);
         }
       });
   }
@@ -232,6 +317,8 @@ const Main = () => {
                   type="text"
                   className={`border border-r-0 rounded-tl-lg rounded-bl-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 text-xl ${
                     visibReceived === true ? "border-r-0" : ""
+                  } ${
+                    checkResMin ? "focus:border-red-400 border-red-400" : null
                   }`}
                   placeholder="0.0000"
                   value={inputRecivedValue}
@@ -283,13 +370,18 @@ const Main = () => {
             <div className="w-full relative" onClick={handleAdressInput}>
               <input
                 type="text"
-                className="border rounded-lg outline-none px-4 py-2.5 focus:border-green-400 transition font-MontserratRegular bg-black/50 w-full text-xl"
+                className={`border rounded-lg outline-none px-4 py-2.5 transition font-MontserratRegular bg-black/50 w-full text-xl ${
+                  validAdress ? "focus:border-green-400" : "border-red-400"
+                }`}
                 placeholder={`Ваш ${receivedCurrency} адресс`}
                 value={userAdress}
                 onChange={changedUserAdress}
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                <IoClose className="cursor-pointer hover:text-green-300" />
+                <IoClose
+                  className="cursor-pointer hover:text-green-300 text-2xl"
+                  onClick={resetUserAdress}
+                />
               </div>
             </div>
 
@@ -308,12 +400,24 @@ const Main = () => {
                 </p>
               </div>
 
-              <button
-                className="bg-green-600/90 font-MontserratSemiBold px-5 py-2 rounded-md active:scale-95 transition"
-                onClick={handleStartTrade}
-              >
-                Начать обмен
-              </button>
+              <div className="h-full gap-5 flex">
+                {activeTrade && (
+                  <button
+                    className={`bg-slate-500 font-MontserratSemiBold px-5 py-2 rounded-md active:scale-95 transition`}
+                    onClick={() => setTrade(true)}
+                  >
+                    Активный обмен
+                  </button>
+                )}
+                {!activeTrade && (
+                  <button
+                    className="bg-green-600/90 font-MontserratSemiBold px-5 py-2 rounded-md active:scale-95 transition"
+                    onClick={handleStartTrade}
+                  >
+                    Начать обмен
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -324,24 +428,78 @@ const Main = () => {
           }`}
         >
           <div
-            className={`bg-white/100 max-w-3xl mx-auto text-black py-5 px-5 rounded-xl border-t-4 border-green-500 top-64 relative `}
+            className={` bg-white/100 max-w-3xl mx-auto text-black py-5 px-5 rounded-xl border-t-4 border-green-500 top-64 relative `}
           >
-            <h2 className="text-center font-MontserratSemiBold text-2xl mb-5">
-              Детали операции
-            </h2>
-            <div className="flex flex-col gap-2">
-              <span className="flex justify-between">
-                Внесите средства:{" "}
-                <p className="font-MontserratSemiBold">
-                  {inputSendValue} {sendCurrency}
-                </p>
-              </span>
-
-              <span className="flex justify-between flex-wrap">
-                По следеющему адрессу:{" "}
-                <p className="font-MontserratSemiBold">{receivedAdress}</p>
-              </span>
+            <div className="flex items-center mb-5 font-MontserratSemiBold text-2xl justify-around">
+              <h2>Детали операции</h2>
+              <h2>#{activeData.id}</h2>
+              <p>{activeData.status?.toUpperCase()}</p>
             </div>
+            <div className="w-full">
+              <div className="mb-5">
+                <div
+                  className={`w-full h-1 mb-8 ${
+                    activeData.status != "waiting" &&
+                    activeData.status != undefined
+                      ? "bg-green-500"
+                      : "bg-slate-400"
+                  }`}
+                >
+                  <h3 className="font-MontserratSemiBold text-center py-2">
+                    Ожидание депозита: {activeData.sendAmount} {activeData.send}
+                  </h3>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="flex justify-between">
+                    Внесите средства:{" "}
+                    <p className="font-MontserratSemiBold">
+                      {activeData.sendAmount} {activeData.send}
+                    </p>
+                  </span>
+
+                  <span className="flex justify-between flex-wrap">
+                    По следеющему адрессу:{" "}
+                    <p className="font-MontserratSemiBold">{receivedAdress}</p>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <div
+                  className={`w-full h-1 mb-8 ${
+                    activeData.status === "sending"
+                      ? "bg-yellow-400"
+                      : activeData.status === "finished"
+                      ? "bg-green-500"
+                      : "bg-slate-400"
+                  }`}
+                >
+                  <h3 className="font-MontserratSemiBold text-center py-2">
+                    Отправка средств: {activeData.receive}{" "}
+                    {activeData.receiveAmount}
+                  </h3>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="flex justify-between">
+                    Отправка средств:{" "}
+                    <p className="font-MontserratSemiBold">
+                      {activeData.receive} {activeData.receiveAmount}
+                    </p>
+                  </span>
+
+                  <span className="flex justify-between flex-wrap">
+                    По вашему адрессу:{" "}
+                    <p className="font-MontserratSemiBold">
+                      {activeData.receivedAdress}
+                    </p>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <IoClose
+              className="absolute right-0 top-0 text-3xl cursor-pointer"
+              onClick={handleVisibDetails}
+            />
           </div>
         </div>
       </section>
